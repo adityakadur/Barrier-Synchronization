@@ -2,7 +2,8 @@
 #include <omp.h>
 #include <sys/time.h>
 
-#define P 10
+#define P 2
+#define NUMLOOPS 1000
 
 int count = P;
 int sense = 1;
@@ -25,8 +26,10 @@ void barrier(int *my_sense){
     }
 int main()
 {
-    printf("Central counter barrier with sense-reversal\n");
-    int N = 100;
+    printf("\nCentral counter barrier with sense-reversal\n"
+            "--------------------------------------------\n"
+            "Number of threads = %d\n", P);
+    int N = NUMLOOPS;
     double total_time;
     struct timeval tv1, tv2;
     int my_sense = 1;
@@ -40,13 +43,15 @@ int main()
             barrier(&my_sense);
             barrier(&my_sense);
             barrier(&my_sense);
+            barrier(&my_sense);
+            barrier(&my_sense);
         }
         gettimeofday(&tv2, NULL);
     }
     total_time = (double) (tv2.tv_usec - tv1.tv_usec) + (double) (tv2.tv_sec - tv1.tv_sec)*1000000;
-    printf("\nSUMMARY:\nNumber of threads = %d\nTotal run-time for %d "
-            "loops with 3 barriers per loop: %f secs\n"
-            "The average time per barrier: %f us\n",
-            P, N, total_time/1000000, (double)(total_time/(N*3)));
+    printf("\nSUMMARY:\nTotal run-time for %d "
+            "loops with 5 barriers per loop: %fs\n"
+            "The average time per barrier: %fus\n",
+            N, total_time/1000000, (double)(total_time/(N*5)));
 }
 
