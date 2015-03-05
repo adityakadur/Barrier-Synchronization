@@ -22,7 +22,6 @@ record* rounds;
 
 void barrier_init(){
     int size = P*(int)(log2(2*P-1)+1);
-    printf("\nSize is %d\n", size);
     rounds = malloc(size * sizeof(record));
     
     int i;
