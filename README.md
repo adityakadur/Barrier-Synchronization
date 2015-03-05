@@ -9,6 +9,7 @@ sudo apt-get install openmpi-bin
 
 OpenMPI compilation instructions:
 mpicc tournament-mpi.c -lm [-DDEBUG]
+mpicc dissemination-mpi.c -lm [-DDEBUG]
 
 -lm is for math.h
 -DDEBUG is for printing debug statements
