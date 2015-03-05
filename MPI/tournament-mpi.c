@@ -2,12 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/time.h>
 
-#ifdef DEBUG
-#define PRINT_DEBUG(M, ...) printf("%s", M)
-#else
-#define PRINT_DEBUG(M, ...)
-#endif
 
 typedef enum {
 	WINNER,
@@ -23,7 +19,6 @@ typedef struct {
 	int send_buf;
 	int recv_buf;
 	MPI_Status stat;
-	MPI_Request req;
 } rounds_t;
 
 int P;
@@ -32,6 +27,12 @@ int logP;
 rounds_t *rounds;
 int tag_up = 1;
 int tag_down = 2;
+
+#ifdef DEBUG
+#define PRINT_DEBUG(fmt, args...) printf(fmt, ## args)
+#else
+#define PRINT_DEBUG(M, args...)
+#endif
 
 void tournament_barrier();
 
@@ -52,9 +53,6 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
     logP = (int) ceil(log2(P));
-    //printf("Num of tasks is %d; logP is %d\n", P, logP);
-    //printf("My rank is %d\n", rank);
-
     rounds = (rounds_t*) calloc(logP+1, sizeof(rounds_t));
     power2k = 1;
 
@@ -76,7 +74,7 @@ int main(int argc, char *argv[])
     				{
     					rounds[k].role = WINNER;
     					rounds[k].opponent = rank + power2k_prev;
-    					//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    					PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     				}	
 
     			}
@@ -85,43 +83,23 @@ int main(int argc, char *argv[])
     		{
     			rounds[k].role = LOSER;
     			rounds[k].opponent = rank - power2k_prev; 
-    			//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    			PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     		if(rank == 0 && power2k >= P)
     		{
     			rounds[k].role = CHAMPION;
     			rounds[k].opponent = rank + power2k_prev;
-    			//PRINT_DEBUG("I (%d) am the champion at level %d", rank, k);
-    			//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    			PRINT_DEBUG("I (%d) am the champion at level %d", rank, k);
+    			PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     	}
     	power2k_prev = power2k;
     	power2k = power2k * 2;
     }
     
-    //tournament_barrier();
     int val = 0;
-    int send_buff = 1;
-    int recv_buff;
-    MPI_Status stat;
-    /*
-    if(rank == 0)
-    {
-    	printf("0 is waiting to receive from 1\n");
-    	MPI_Recv(&recv_buff, 1, MPI_INT, 1, 1, MPI_COMM_WORLD, &stat);
-    	printf("0 received from %d\n", stat.MPI_SOURCE);
-    	MPI_Recv(&recv_buff, 1, MPI_INT, 2, 1, MPI_COMM_WORLD, &stat);
-    	printf("0 received from %d\n", stat.MPI_SOURCE);
-    }
-    if(rank > 0)
-    {
-    	for (i = 0; i < 10000000; i++)
-    		val = 1;
-    	printf("%d is sending to 0\n", rank);
-    	MPI_Send(&send_buff, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
-    	printf("%d sent to 0\n", rank);
-    }
-    */
+
+    struct timeval tv;
     for(i = 1; i < 1000; i++)
     {
     	val = val+1;
@@ -130,23 +108,22 @@ int main(int argc, char *argv[])
     	val = val + recv_buff;
     	//printf("%d: Entering barrier %d\n", rank, i);
     	tournament_barrier();
-    	printf("Result %d: AFter the barrier %d value %d\n",rank, i, val );
+    	
+    	gettimeofday(&tv, NULL);
+    	printf("Result %d: AFter the barrier %d value %d at %ld\n",rank, i, val, tv.tv_usec );
     	tournament_barrier();
-    	//tournament_barrier();
     }
-    
+    fclose(log_file);
     MPI_Finalize();
 }
 
 void tournament_barrier()
 {
-	//int *send_buf = (int*) malloc(sizeof(int));
 	int round = 0;
 	int fin = 0;
 	while(!fin)
 	{
 		round++;
-		//PRINT_DEBUG("At level %d, %d is %d\n",round, rank, rounds[round].role);
 		switch(rounds[round].role)
 		{
 			case LOSER:
@@ -184,7 +161,9 @@ void tournament_barrier()
 			case WINNER:
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
 				PRINT_DEBUG("%d: Winner at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
+				continue;
 			case DROPOUT:
+				PRINT_DEBUG("%d: At level %d, DROPOUT exiting the loop\n", rank, round);
 				fin = 1;
 				break;
 			case LOSER:			// impossible

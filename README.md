@@ -8,10 +8,13 @@ sudo apt-get install libopenmpi-dev
 sudo apt-get install openmpi-bin
 
 OpenMPI compilation instructions:
-mpicc tournament-mpi.c -lm   (-lm is for math.h)
+mpicc tournament-mpi.c -lm [-DDEBUG]
+
+-lm is for math.h
+-DDEBUG is for printing debug statements
 
 To run an OpenMPI program:
-mpirun -np 4 a.out
+mpirun -np 4 a.out [> output_file]
 
 
 
