@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifdef DEBUG
+#define PRINT_DEBUG(M, ...) printf("%s", M)
+#else
+#define PRINT_DEBUG(M, ...)
+#endif
+
 typedef enum {
 	WINNER,
 	LOSER,
@@ -70,7 +76,7 @@ int main(int argc, char *argv[])
     				{
     					rounds[k].role = WINNER;
     					rounds[k].opponent = rank + power2k_prev;
-    					//printf("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    					//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     				}	
 
     			}
@@ -79,14 +85,14 @@ int main(int argc, char *argv[])
     		{
     			rounds[k].role = LOSER;
     			rounds[k].opponent = rank - power2k_prev; 
-    			//printf("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    			//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     		if(rank == 0 && power2k >= P)
     		{
     			rounds[k].role = CHAMPION;
     			rounds[k].opponent = rank + power2k_prev;
-    			//printf("I (%d) am the champion at level %d", rank, k);
-    			//printf("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
+    			//PRINT_DEBUG("I (%d) am the champion at level %d", rank, k);
+    			//PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     	}
     	power2k_prev = power2k;
@@ -116,11 +122,11 @@ int main(int argc, char *argv[])
     	printf("%d sent to 0\n", rank);
     }
     */
-    for(i = 1; i < 10; i++)
+    for(i = 1; i < 1000; i++)
     {
     	val = val+1;
-    	MPI_Send(&send_buff, 1, MPI_INT, (rank+1) % P, 100, MPI_COMM_WORLD);
-    	MPI_Recv(&recv_buff, 1, MPI_INT, (rank-1)% P, 100, MPI_COMM_WORLD, &stat);
+    	//MPI_Send(&send_buff, 1, MPI_INT, (rank+1) % P, 100, MPI_COMM_WORLD);
+    	//MPI_Recv(&recv_buff, 1, MPI_INT, (rank-1)% P, 100, MPI_COMM_WORLD, &stat);
     	val = val + recv_buff;
     	//printf("%d: Entering barrier %d\n", rank, i);
     	tournament_barrier();
@@ -140,25 +146,25 @@ void tournament_barrier()
 	while(!fin)
 	{
 		round++;
-		//printf("At level %d, %d is %d\n",round, rank, rounds[round].role);
+		//PRINT_DEBUG("At level %d, %d is %d\n",round, rank, rounds[round].role);
 		switch(rounds[round].role)
 		{
 			case LOSER:
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				printf("%d: Loser at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
+				PRINT_DEBUG("%d: Loser at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				printf("%d: Loser at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
+				PRINT_DEBUG("%d: Loser at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				fin = 1;
 				break;
 			case WINNER:
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				printf("%d: Winner at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
+				PRINT_DEBUG("%d: Winner at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				break;
 			case CHAMPION:
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				printf("%d: Champion at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
+				PRINT_DEBUG("%d: Champion at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				printf("%d: Champion at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
+				PRINT_DEBUG("%d: Champion at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 				fin = 1;
 				break;
 			case BYE:
@@ -168,7 +174,7 @@ void tournament_barrier()
 				continue;
 		}
 	}
-	//printf("Reached the top in %d. Moving down\n", rank);
+	//PRINT_DEBUG("Reached the top in %d. Moving down\n", rank);
 	fin = 0;
 	while(!fin)
 	{
@@ -177,7 +183,7 @@ void tournament_barrier()
 		{
 			case WINNER:
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				printf("%d: Winner at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
+				PRINT_DEBUG("%d: Winner at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 			case DROPOUT:
 				fin = 1;
 				break;
@@ -191,5 +197,5 @@ void tournament_barrier()
 				continue;
 		}
 	}
-	//printf("End of barrier in %d\n", rank );
+	//PRINT_DEBUG("End of barrier in %d\n", rank );
 }
