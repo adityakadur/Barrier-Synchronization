@@ -2,10 +2,7 @@
 #include <omp.h>
 #include <sys/time.h>
 
-#define P 2
-#define NUMLOOPS 100
-
-int count = P;
+int P, NUMLOOPS, count;
 int sense = 1;
 
 void barrier(int *my_sense, int *old_count){
@@ -23,22 +20,28 @@ void barrier(int *my_sense, int *old_count){
         else while(sense != *my_sense);
         
     }
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc==3){
+        if (sscanf (argv[1], "%d", &P)!=1) printf ("P - not an integer\n");
+        if (sscanf (argv[2], "%d", &NUMLOOPS)!=1) printf ("N - not an integer\n");
+    }
+    else {P = 4; NUMLOOPS = 1000;}
+    count = P;
+
     printf("\nCentral counter barrier with sense-reversal\n"
             "--------------------------------------------\n"
             "Number of threads = %d\n", P);
-    int N = NUMLOOPS;
     double total_time;
     struct timeval tv1, tv2;
     int my_sense = 1;
     int old_count;
     int j;
     
-    #pragma omp parallel num_threads(P) shared(count,sense,tv1,tv2,N,total_time) firstprivate(my_sense, old_count,j)
+    #pragma omp parallel num_threads(P) shared(count, sense, tv1, tv2, total_time) firstprivate(my_sense, old_count, j)
     {
         gettimeofday(&tv1, NULL);
-        for (j=0;j<N;j++){
+        for (j=0; j<NUMLOOPS; j++){
             
             barrier(&my_sense,&old_count);
             barrier(&my_sense,&old_count);
@@ -52,6 +55,6 @@ int main()
     printf("\nSUMMARY:\nTotal run-time for %d "
             "loops with 5 barriers per loop: %fs\n"
             "The average time per barrier: %fus\n",
-            N, total_time/1000000, (double)(total_time/(N*5)));
+            NUMLOOPS, total_time/1000000, (double)(total_time/(NUMLOOPS*5)));
 }
 
