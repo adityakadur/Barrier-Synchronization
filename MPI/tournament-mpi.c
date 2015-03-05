@@ -4,6 +4,11 @@
 #include <math.h>
 #include <sys/time.h>
 
+#ifdef DEBUG
+#define PRINT_DEBUG(fmt, args...) printf(fmt, ## args)
+#else
+#define PRINT_DEBUG(M, args...)
+#endif
 
 typedef enum {
 	WINNER,
@@ -22,17 +27,9 @@ typedef struct {
 } rounds_t;
 
 int P;
-int rank;
 int logP;
+int rank;
 rounds_t *rounds;
-int tag_up = 1;
-int tag_down = 2;
-
-#ifdef DEBUG
-#define PRINT_DEBUG(fmt, args...) printf(fmt, ## args)
-#else
-#define PRINT_DEBUG(M, args...)
-#endif
 
 void tournament_barrier();
 
@@ -103,17 +100,12 @@ int main(int argc, char *argv[])
     for(i = 1; i < 1000; i++)
     {
     	val = val+1;
-    	//MPI_Send(&send_buff, 1, MPI_INT, (rank+1) % P, 100, MPI_COMM_WORLD);
-    	//MPI_Recv(&recv_buff, 1, MPI_INT, (rank-1)% P, 100, MPI_COMM_WORLD, &stat);
-    	val = val + recv_buff;
     	//printf("%d: Entering barrier %d\n", rank, i);
-    	tournament_barrier();
-    	
+    	tournament_barrier();   	
     	gettimeofday(&tv, NULL);
     	printf("Result %d: AFter the barrier %d value %d at %ld\n",rank, i, val, tv.tv_usec );
     	tournament_barrier();
     }
-    fclose(log_file);
     MPI_Finalize();
 }
 
