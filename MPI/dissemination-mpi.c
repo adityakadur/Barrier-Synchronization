@@ -69,9 +69,9 @@ void dissemination_barrier()
 
 	for(i = 0; i < logP; i++)
 	{
-		MPI_Send(&send_buf, 1, MPI_INT, partner[i], 1, MPI_COMM_WORLD);
+		MPI_Send(&send_buf, 1, MPI_INT, partner[i], i, MPI_COMM_WORLD);
 		PRINT_DEBUG("%d: In round %d, sent message to %d\n", rank, i, partner[i]);
-		MPI_Recv(&recv_buf, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &stat);
+		MPI_Recv(&recv_buf, 1, MPI_INT, MPI_ANY_SOURCE, i, MPI_COMM_WORLD, &stat);
 		PRINT_DEBUG("%d: In round %d, received message from %d\n", rank, i, stat.MPI_SOURCE);
 	}
 }
