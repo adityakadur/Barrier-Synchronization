@@ -17,6 +17,10 @@ mpicc dissemination-mpi.c -lm [-DDEBUG]
 To run an OpenMPI program:
 mpirun -np 4 a.out [> output_file]
 
+The test.py checks the values and the timestamps printed after each barrier. Look at the comments at the top of the file for printf format to use.
+
+To run test.py:
+python test.py <output_file> <num_processes> <num_iterations_of_barrier>
 
 
 

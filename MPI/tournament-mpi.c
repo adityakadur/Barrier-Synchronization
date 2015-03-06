@@ -95,15 +95,16 @@ int main(int argc, char *argv[])
     }
     
     int val = 0;
-
     struct timeval tv;
-    for(i = 1; i < 1000; i++)
+    unsigned long timestamp;
+    for(i = 0; i < 1000; i++)
     {
     	val = val+1;
     	//printf("%d: Entering barrier %d\n", rank, i);
     	tournament_barrier();   	
     	gettimeofday(&tv, NULL);
-    	printf("Result %d: AFter the barrier %d value %d at %ld\n",rank, i, val, tv.tv_usec );
+    	timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+    	printf("Result %d After the barrier %d value %d at %lu\n",rank, i, val, timestamp );
     	tournament_barrier();
     }
     MPI_Finalize();
