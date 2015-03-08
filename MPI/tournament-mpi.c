@@ -4,12 +4,6 @@
 #include <math.h>
 #include <sys/time.h>
 
-#ifdef DEBUG
-#define PRINT_DEBUG(fmt, args...) printf(fmt, ## args)
-#else
-#define PRINT_DEBUG(M, args...)
-#endif
-
 typedef enum {
 	WINNER,
 	LOSER,
@@ -31,34 +25,66 @@ int logP;
 int rank;
 rounds_t *rounds;
 
+void tournament_barrier_init();
 void tournament_barrier();
 
 int main(int argc, char *argv[])
 {
 	int ret_val;
-	unsigned long power2k, power2k_prev;
-	int k;
 	int i;
 	int NUMLOOPS = 1000;
 	
 	ret_val = MPI_Init(&argc, &argv);
-	if(argc == 2)
-        {
-                if (sscanf (argv[1], "%d", &NUMLOOPS)!=1) printf ("N - not an integer\n");
-	}
 	if (ret_val != MPI_SUCCESS)
 	{
 		printf("Failure initializing MPI\n");
 		MPI_Abort(MPI_COMM_WORLD, ret_val);
 	}
+
+	if(argc == 2)
+        {
+                if (sscanf (argv[1], "%d", &NUMLOOPS)!=1) printf ("N - not an integer\n");
+	}
+	
+    tournament_barrier_init();
+
+    struct timeval tv;
+    struct timeval tv1;
+
+    if(rank == 0)
+		gettimeofday(&tv, NULL);
+    for(i = 0; i < NUMLOOPS; i++)
+    {
+		tournament_barrier();
+    	tournament_barrier();
+		tournament_barrier();
+		tournament_barrier();
+		tournament_barrier();
+    }
+    if (rank == 0)
+    {
+		gettimeofday(&tv1, NULL);
+		double total_time = (double) (tv1.tv_usec - tv.tv_usec) + (double) (tv1.tv_sec - tv.tv_sec)*1000000;
+		printf("\nSUMMARY for Tournament barrier:\nNumber of processes: %d\nTotal run-time for %d "
+        	    "loops with 5 barriers per loop: %fs\n"
+            	"The average time per barrier: %fus\n",
+            	P, NUMLOOPS, total_time/1000000, (double)(total_time/(NUMLOOPS*5)));
+    }
+    MPI_Finalize();
+}
+
+void tournament_barrier_init()
+{
+	int k;
+	int power2k = 1;
+	int power2k_prev;
+
 	MPI_Comm_size(MPI_COMM_WORLD,&P);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-
-    logP = (int) ceil(log2(P));
+	logP = (int) ceil(log2(P));
     rounds = (rounds_t*) calloc(logP+1, sizeof(rounds_t));
-    power2k = 1;
 
-    // Assign roles and opponents to each level of this process
+	// Assign roles and opponents to each level of this process
     for(k = 0; k <= logP; k++)
     {
     	rounds[k].send_buf = 1;
@@ -76,7 +102,6 @@ int main(int argc, char *argv[])
     				{
     					rounds[k].role = WINNER;
     					rounds[k].opponent = rank + power2k_prev;
-    					PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     				}	
 
     			}
@@ -85,45 +110,16 @@ int main(int argc, char *argv[])
     		{
     			rounds[k].role = LOSER;
     			rounds[k].opponent = rank - power2k_prev; 
-    			PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     		if(rank == 0 && power2k >= P)
     		{
     			rounds[k].role = CHAMPION;
     			rounds[k].opponent = rank + power2k_prev;
-    			PRINT_DEBUG("I (%d) am the champion at level %d", rank, k);
-    			PRINT_DEBUG("My(%d) opponent at level %d is %d\n", rank, k, rounds[k].opponent);
     		}
     	}
     	power2k_prev = power2k;
     	power2k = power2k * 2;
     }
-    
-    //int val = 0;
-    struct timeval tv;
-    struct timeval tv1;
-    //unsigned long timestamp;
-    //
-    if(rank == 0)
-	gettimeofday(&tv, NULL);
-    for(i = 0; i < NUMLOOPS; i++)
-    {
-	tournament_barrier();
-    	tournament_barrier();
-	tournament_barrier();
-	tournament_barrier();
-	tournament_barrier();
-    }
-    if (rank == 0)
-    {
-	gettimeofday(&tv1, NULL);
-	double total_time = (double) (tv1.tv_usec - tv.tv_usec) + (double) (tv1.tv_sec - tv.tv_sec)*1000000;
-	printf("\nSUMMARY for Tournament barrier:\nNumber of processes: %d\nTotal run-time for %d "
-            "loops with 5 barriers per loop: %fs\n"
-            "The average time per barrier: %fus\n",
-            P, NUMLOOPS, total_time/1000000, (double)(total_time/(NUMLOOPS*5)));
-    }
-    MPI_Finalize();
 }
 
 void tournament_barrier()
@@ -137,20 +133,15 @@ void tournament_barrier()
 		{
 			case LOSER:
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				PRINT_DEBUG("%d: Loser at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				PRINT_DEBUG("%d: Loser at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				fin = 1;
 				break;
 			case WINNER:
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				PRINT_DEBUG("%d: Winner at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				break;
 			case CHAMPION:
 				MPI_Recv(&rounds[round].recv_buf, 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD, &rounds[round].stat);
-				PRINT_DEBUG("%d: Champion at level %d received tag %d from %d\n", rank, round, rounds[round].stat.MPI_TAG, rounds[round].stat.MPI_SOURCE);
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				PRINT_DEBUG("%d: Champion at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 				fin = 1;
 				break;
 			case BYE:
@@ -160,7 +151,6 @@ void tournament_barrier()
 				continue;
 		}
 	}
-	//PRINT_DEBUG("Reached the top in %d. Moving down\n", rank);
 	fin = 0;
 	while(!fin)
 	{
@@ -169,10 +159,8 @@ void tournament_barrier()
 		{
 			case WINNER:
 				MPI_Send(&(rounds[round].send_buf), 1, MPI_INT, rounds[round].opponent, round, MPI_COMM_WORLD);
-				PRINT_DEBUG("%d: Winner at level %d sent tag %d to %d\n", rank, round, round, rounds[round].opponent);
 				continue;
 			case DROPOUT:
-				PRINT_DEBUG("%d: At level %d, DROPOUT exiting the loop\n", rank, round);
 				fin = 1;
 				break;
 			case LOSER:			// impossible
@@ -185,5 +173,4 @@ void tournament_barrier()
 				continue;
 		}
 	}
-	//PRINT_DEBUG("End of barrier in %d\n", rank );
 }
