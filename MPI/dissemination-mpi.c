@@ -9,6 +9,7 @@ int logP;
 int rank;
 int *partner;
 
+void dissemination_barrier_init();
 void dissemination_barrier();
 
 int main(int argc, char *argv[])
