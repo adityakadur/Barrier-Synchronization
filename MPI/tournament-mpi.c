@@ -39,8 +39,13 @@ int main(int argc, char *argv[])
 	unsigned long power2k, power2k_prev;
 	int k;
 	int i;
-
+	int NUMLOOPS = 1000;
+	
 	ret_val = MPI_Init(&argc, &argv);
+	if(argc == 2)
+        {
+                if (sscanf (argv[1], "%d", &NUMLOOPS)!=1) printf ("N - not an integer\n");
+	}
 	if (ret_val != MPI_SUCCESS)
 	{
 		printf("Failure initializing MPI\n");
@@ -94,18 +99,29 @@ int main(int argc, char *argv[])
     	power2k = power2k * 2;
     }
     
-    int val = 0;
+    //int val = 0;
     struct timeval tv;
-    unsigned long timestamp;
-    for(i = 0; i < 1000; i++)
+    struct timeval tv1;
+    //unsigned long timestamp;
+    //
+    if(rank == 0)
+	gettimeofday(&tv, NULL);
+    for(i = 0; i < NUMLOOPS; i++)
     {
-    	val = val+1;
-    	//printf("%d: Entering barrier %d\n", rank, i);
-    	tournament_barrier();   	
-    	gettimeofday(&tv, NULL);
-    	timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
-    	printf("Result %d After the barrier %d value %d at %lu\n",rank, i, val, timestamp );
+	tournament_barrier();
     	tournament_barrier();
+	tournament_barrier();
+	tournament_barrier();
+	tournament_barrier();
+    }
+    if (rank == 0)
+    {
+	gettimeofday(&tv1, NULL);
+	double total_time = (double) (tv1.tv_usec - tv.tv_usec) + (double) (tv1.tv_sec - tv.tv_sec)*1000000;
+	printf("\nSUMMARY for Tournament barrier:\nNumber of processes: %d\nTotal run-time for %d "
+            "loops with 5 barriers per loop: %fs\n"
+            "The average time per barrier: %fus\n",
+            P, NUMLOOPS, total_time/1000000, (double)(total_time/(NUMLOOPS*5)));
     }
     MPI_Finalize();
 }
