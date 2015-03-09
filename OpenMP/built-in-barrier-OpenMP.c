@@ -3,6 +3,8 @@
 #include <omp.h>
 #include <sys/time.h>
 
+int P, NUMLOOPS;
+
 int main(int argc, char* argv[])
 {
     if (argc==3){
@@ -10,7 +12,6 @@ int main(int argc, char* argv[])
         if (sscanf (argv[2], "%d", &NUMLOOPS)!=1) printf ("N - not an integer\n");
     }
     else {P = 4; NUMLOOPS = 1000;}
-    barrier_init();
     printf("\nBuilt-in OpenMP barrier\n"
             "--------------------------------------------\n"
             "Number of threads = %d\n", P);
